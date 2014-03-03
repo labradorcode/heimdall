@@ -34,6 +34,7 @@
 #include "Interface.h"
 #include "PrintPitAction.h"
 #include "VersionAction.h"
+#include "Devices.h"
 
 using namespace std;
 using namespace libpit;
@@ -67,6 +68,7 @@ void populateActionMap(void)
 	actionMap["help"] = Interface::ActionInfo(&HelpAction::Execute, HelpAction::usage);
 	actionMap["info"] = Interface::ActionInfo(&InfoAction::Execute, InfoAction::usage);
 	actionMap["print-pit"] = Interface::ActionInfo(&PrintPitAction::Execute, PrintPitAction::usage);
+	actionMap["devices"] = Interface::ActionInfo(&Devices::Execute, Devices::usage);
 	actionMap["version"] = Interface::ActionInfo(&VersionAction::Execute, VersionAction::usage);
 }
 

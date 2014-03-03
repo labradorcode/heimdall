@@ -89,9 +89,40 @@ enum
 	kPitSizeMultiplicand = 4096
 };
 
-int BridgeManager::FindDeviceInterface(void)
+bool BridgeManager::ListDevices(void)
 {
-	Interface::Print("Detecting device...\n");
+	int result = libusb_init(&libusbContext);
+	bool rc = false;
+
+	if (result != LIBUSB_SUCCESS)
+	{
+		Interface::PrintError("Failed to initialise libusb. libusb error: %d\n", result);
+		return rc;
+	}
+
+	// Setup libusb log level.
+	switch (usbLogLevel)
+	{
+		case UsbLogLevel::None:
+			libusb_set_debug(libusbContext, LIBUSB_LOG_LEVEL_NONE);
+			break;
+
+		case UsbLogLevel::Error:
+			libusb_set_debug(libusbContext, LIBUSB_LOG_LEVEL_ERROR);
+			break;
+
+		case UsbLogLevel::Warning:
+			libusb_set_debug(libusbContext, LIBUSB_LOG_LEVEL_WARNING);
+			break;
+
+		case UsbLogLevel::Info:
+			libusb_set_debug(libusbContext, LIBUSB_LOG_LEVEL_INFO);
+			break;
+
+		case UsbLogLevel::Debug:
+			libusb_set_debug(libusbContext, LIBUSB_LOG_LEVEL_DEBUG);
+			break;
+	}
 
 	struct libusb_device **devices;
 	int deviceCount = libusb_get_device_list(libusbContext, &devices);
@@ -105,11 +136,47 @@ int BridgeManager::FindDeviceInterface(void)
 		{
 			if (descriptor.idVendor == supportedDevices[i].vendorId && descriptor.idProduct == supportedDevices[i].productId)
 			{
+				Interface::Print("%d:%d\n", libusb_get_bus_number(devices[deviceIndex]), 
+						libusb_get_port_number(devices[deviceIndex]));
+				rc = true;
+			}
+		}
+	}
+
+	libusb_free_device_list(devices, deviceCount);
+	return rc;
+}
+
+int BridgeManager::FindDeviceInterface(void)
+{
+	Interface::Print("Detecting device...\n");
+
+	struct libusb_device **devices;
+	int deviceCount = libusb_get_device_list(libusbContext, &devices);
+
+	for (int deviceIndex = 0; deviceIndex < deviceCount; deviceIndex++)
+	{
+		libusb_device_descriptor descriptor;
+		libusb_get_device_descriptor(devices[deviceIndex], &descriptor);
+
+		if (usbBus && usbPort) {
+			if (libusb_get_bus_number(devices[deviceIndex]) != usbBus ||
+			    libusb_get_port_number(devices[deviceIndex]) != usbPort) {
+				continue;
+			}
+		}
+
+		for (int i = 0; i < BridgeManager::kSupportedDeviceCount; i++)
+		{
+			if (descriptor.idVendor == supportedDevices[i].vendorId && descriptor.idProduct == supportedDevices[i].productId)
+			{
 				heimdallDevice = devices[deviceIndex];
 				libusb_ref_device(heimdallDevice);
+				Interface::PrintError("Found a device! %s\n", heimdallDevice);
 				break;
 			}
 		}
+
 
 		if (heimdallDevice)
 			break;
@@ -468,6 +535,8 @@ BridgeManager::BridgeManager(bool verbose, int communicationDelay)
 	fileTransferSequenceTimeout = kFileTransferSequenceTimeoutDefault;
 
 	usbLogLevel = UsbLogLevel::Default;
+	usbBus = 0;
+	usbPort = 0;
 }
 
 BridgeManager::~BridgeManager()
@@ -528,6 +597,13 @@ bool BridgeManager::DetectDevice(void)
 	{
 		libusb_device_descriptor descriptor;
 		libusb_get_device_descriptor(devices[deviceIndex], &descriptor);
+
+		if (usbBus && usbPort) {
+			if (libusb_get_bus_number(devices[deviceIndex]) != usbBus ||
+			    libusb_get_port_number(devices[deviceIndex]) != usbPort) {
+				continue;
+			}
+		}
 
 		for (int i = 0; i < BridgeManager::kSupportedDeviceCount; i++)
 		{
@@ -1372,3 +1448,12 @@ void BridgeManager::SetUsbLogLevel(UsbLogLevel usbLogLevel)
 		}
 	}
 }
+
+void BridgeManager::SetUsbPort(int port) {
+	this->usbPort = port;
+}
+
+void BridgeManager::SetUsbBus(int bus) {
+	this->usbBus = bus;
+}
+

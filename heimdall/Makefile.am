@@ -16,7 +16,8 @@ heimdall_SOURCES = source/Arguments.cpp \
 	source/main.cpp \
 	source/PrintPitAction.cpp \
 	source/Utility.cpp \
-	source/VersionAction.cpp
+	source/VersionAction.cpp \
+	source/Devices.cpp
 
 heimdall_LDADD = $(DEPS_LIBS) $(STATIC_LIBS)
 

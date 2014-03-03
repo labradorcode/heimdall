@@ -43,11 +43,13 @@ Arguments:\n\
 	--<partition name>|--<partition identifier> <filename> [...]\n\
     [--verbose] [--no-reboot] [--stdout-errors] [--delay <ms>]\n\
     [--usb-log-level <none/error/warning/debug>]\n\
+    [--usb-bus <bus> --usb-port <port>]\n\
   or:\n\
 	--<partition name>|--<partition identifier> <filename> [...]\n\
     [--pit <filename>]\n\
     [--verbose] [--no-reboot] [--stdout-errors] [--delay <ms>]\n\
     [--usb-log-level <none/error/warning/debug>]\n\
+    [--usb-bus <bus> --usb-port <port>]\n\
 Description: Flashes one or more firmware files to your phone. Partition names\n\
     (or identifiers) can be obtained by executing the print-pit action.\n\
 WARNING: If you're repartitioning it's strongly recommended you specify\n\
@@ -393,6 +395,8 @@ int FlashAction::Execute(int argc, char **argv)
 	argumentTypes["verbose"] = kArgumentTypeFlag;
 	argumentTypes["stdout-errors"] = kArgumentTypeFlag;
 	argumentTypes["usb-log-level"] = kArgumentTypeString;
+	argumentTypes["usb-port"] = kArgumentTypeUnsignedInteger;
+	argumentTypes["usb-bus"] = kArgumentTypeUnsignedInteger;
 
 	argumentTypes["pit"] = kArgumentTypeString;
 	shortArgumentAliases["pit"] = "pit";
@@ -418,6 +422,16 @@ int FlashAction::Execute(int argc, char **argv)
 	}
 
 	const UnsignedIntegerArgument *communicationDelayArgument = static_cast<const UnsignedIntegerArgument *>(arguments.GetArgument("delay"));
+	const UnsignedIntegerArgument *usbBusArgument = static_cast<const UnsignedIntegerArgument *>(arguments.GetArgument("usb-bus"));
+	const UnsignedIntegerArgument *usbPortArgument = static_cast<const UnsignedIntegerArgument *>(arguments.GetArgument("usb-port"));
+
+	if (usbBusArgument || usbPortArgument) {
+		if (!usbBusArgument || !usbPortArgument) {
+			Interface::Print("Bus and Port must both be specified.\n");
+			Interface::Print(FlashAction::usage);
+			return (0);
+		}
+	}
 
 	bool reboot = arguments.GetArgument("no-reboot") == nullptr;
 	bool resume = arguments.GetArgument("resume") != nullptr;
@@ -502,8 +516,14 @@ int FlashAction::Execute(int argc, char **argv)
 	if (communicationDelayArgument)
 		communicationDelay = communicationDelayArgument->GetValue();
 
+
 	BridgeManager *bridgeManager = new BridgeManager(verbose, communicationDelay);
 	bridgeManager->SetUsbLogLevel(usbLogLevel);
+
+	if (usbBusArgument)
+		bridgeManager->SetUsbBus(usbBusArgument->GetValue());
+	if (usbPortArgument)
+		bridgeManager->SetUsbPort(usbPortArgument->GetValue());
 
 	if (bridgeManager->Initialise(resume) != BridgeManager::kInitialiseSucceeded || !bridgeManager->BeginSession())
 	{

@@ -123,6 +123,8 @@ namespace Heimdall
 			unsigned int fileTransferSequenceTimeout;
 
 			UsbLogLevel usbLogLevel;
+			int usbBus;
+			int usbPort;
 
 			int FindDeviceInterface(void);
 			bool ClaimDeviceInterface(void);
@@ -139,6 +141,7 @@ namespace Heimdall
 			bool DetectDevice(void);
 			int Initialise(bool resume);
 
+			bool ListDevices(void);
 			bool BeginSession(void);
 			bool EndSession(bool reboot) const;
 
@@ -154,6 +157,8 @@ namespace Heimdall
 			bool SendFile(FILE *file, unsigned int destination, unsigned int deviceType, unsigned int fileIdentifier = 0xFFFFFFFF) const;
 
 			void SetUsbLogLevel(UsbLogLevel usbLogLevel);
+			void SetUsbBus(int bus);
+			void SetUsbPort(int port);
 
 			UsbLogLevel GetUsbLogLevel(void) const
 			{
