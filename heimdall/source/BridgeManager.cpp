@@ -172,7 +172,7 @@ int BridgeManager::FindDeviceInterface(void)
 			{
 				heimdallDevice = devices[deviceIndex];
 				libusb_ref_device(heimdallDevice);
-				Interface::PrintError("Found a device! %s\n", heimdallDevice);
+				Interface::Print("Found a device!\n");
 				break;
 			}
 		}
