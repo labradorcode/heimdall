@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2013 Benjamin Dobell, Glass Echidna
+/* Copyright (c) 2010-2014 Benjamin Dobell, Glass Echidna
  
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
@@ -39,19 +39,21 @@ using namespace Heimdall;
 
 const char *FlashAction::usage = "Action: flash\n\
 Arguments:\n\
-    --repartition --pit <filename>\n\
-	--<partition name>|--<partition identifier> <filename> [...]\n\
-    [--verbose] [--no-reboot] [--stdout-errors] [--delay <ms>]\n\
+    [--<partition name> <filename> ...]\n\
+    [--<partition identifier> <filename> ...]\n\
+    [--pit <filename>] [--verbose] [--no-reboot] [--resume] [--stdout-errors]\n\
     [--usb-log-level <none/error/warning/debug>]\n\
     [--usb-bus <bus> --usb-port <port>]\n\
   or:\n\
-	--<partition name>|--<partition identifier> <filename> [...]\n\
-    [--pit <filename>]\n\
-    [--verbose] [--no-reboot] [--stdout-errors] [--delay <ms>]\n\
-    [--usb-log-level <none/error/warning/debug>]\n\
+    --repartition --pit <filename> [--<partition name> <filename> ...]\n\
+    [--<partition identifier> <filename> ...] [--verbose] [--no-reboot]\n\
+    [--resume] [--stdout-errors] [--usb-log-level <none/error/warning/debug>]\n\
     [--usb-bus <bus> --usb-port <port>]\n\
 Description: Flashes one or more firmware files to your phone. Partition names\n\
     (or identifiers) can be obtained by executing the print-pit action.\n\
+Note: --no-reboot causes the device to remain in download mode after the action\n\
+      is completed. If you wish to perform another action whilst remaining in\n\
+      download mode, then the following action must specify the --resume flag.\n\
 WARNING: If you're repartitioning it's strongly recommended you specify\n\
         all files at your disposal.\n";
 
@@ -87,7 +89,7 @@ static bool openFiles(Arguments& arguments, vector<PartitionFile>& partitionFile
 
 	if (pitArgument)
 	{
-		pitFile = fopen(pitArgument->GetValue().c_str(), "rb");
+		pitFile = FileOpen(pitArgument->GetValue().c_str(), "rb");
 
 		if (!pitFile)
 		{
@@ -100,7 +102,6 @@ static bool openFiles(Arguments& arguments, vector<PartitionFile>& partitionFile
 
 	for (vector<const Argument *>::const_iterator it = arguments.GetArguments().begin(); it != arguments.GetArguments().end(); it++)
 	{
-		bool isPartitionArgument = false;
 		const string& argumentName = (*it)->GetName();
 		
 		// The only way an argument could exist without being in the argument types map is if it's a wild-card.
@@ -110,7 +111,7 @@ static bool openFiles(Arguments& arguments, vector<PartitionFile>& partitionFile
 		if (arguments.GetArgumentTypes().find(argumentName) == arguments.GetArgumentTypes().end())
 		{
 			const StringArgument *stringArgument = static_cast<const StringArgument *>(*it);
-			FILE *file = fopen(stringArgument->GetValue().c_str(), "rb");
+			FILE *file = FileOpen(stringArgument->GetValue().c_str(), "rb");
 
 			if (!file)
 			{
@@ -131,34 +132,34 @@ static void closeFiles(vector<PartitionFile>& partitionFiles, FILE *& pitFile)
 
 	if (pitFile)
 	{
-		fclose(pitFile);
+		FileClose(pitFile);
 		pitFile = nullptr;
 	}
 
 	// Close partition files
 
 	for (vector<PartitionFile>::const_iterator it = partitionFiles.begin(); it != partitionFiles.end(); it++)
-		fclose(it->file);
+		FileClose(it->file);
 
 	partitionFiles.clear();
 }
 
 static bool sendTotalTransferSize(BridgeManager *bridgeManager, const vector<PartitionFile>& partitionFiles, FILE *pitFile, bool repartition)
 {
-	int totalBytes = 0;
+	unsigned int totalBytes = 0;
 
 	for (vector<PartitionFile>::const_iterator it = partitionFiles.begin(); it != partitionFiles.end(); it++)
 	{
-		fseek(it->file, 0, SEEK_END);
-		totalBytes += ftell(it->file);
-		rewind(it->file);
+		FileSeek(it->file, 0, SEEK_END);
+		totalBytes += (unsigned int)FileTell(it->file);
+		FileRewind(it->file);
 	}
 
 	if (repartition)
 	{
-		fseek(pitFile, 0, SEEK_END);
-		totalBytes += ftell(pitFile);
-		rewind(pitFile);
+		FileSeek(pitFile, 0, SEEK_END);
+		totalBytes += (unsigned int)FileTell(pitFile);
+		FileRewind(pitFile);
 	}
 
 	bool success;
@@ -169,7 +170,7 @@ static bool sendTotalTransferSize(BridgeManager *bridgeManager, const vector<Par
 
 	if (!success)
 	{
-		Interface::PrintError("Failed to send total bytes device info packet!\n");
+		Interface::PrintError("Failed to send total bytes packet!\n");
 		return (false);
 	}
 
@@ -180,13 +181,13 @@ static bool sendTotalTransferSize(BridgeManager *bridgeManager, const vector<Par
 
 	if (!success)
 	{
-		Interface::PrintError("Failed to receive device info response!\n");
+		Interface::PrintError("Failed to receive session total bytes response!\n");
 		return (false);
 	}
 
 	if (totalBytesResult != 0)
 	{
-		Interface::PrintError("Unexpected device info response!\nExpected: 0\nReceived:%d\n", totalBytesResponse);
+		Interface::PrintError("Unexpected session total bytes response!\nExpected: 0\nReceived:%d\n", totalBytesResponse);
 		return (false);
 	}
 
@@ -253,7 +254,7 @@ static bool flashFile(BridgeManager *bridgeManager, const PartitionFlashInfo& pa
 		Interface::Print("Uploading %s\n", partitionFlashInfo.pitEntry->GetPartitionName());
 
 		if (bridgeManager->SendFile(partitionFlashInfo.file, EndModemFileTransferPacket::kDestinationModem,
-			partitionFlashInfo.pitEntry->GetDeviceType()))     // <-- Odin method
+			partitionFlashInfo.pitEntry->GetDeviceType()))
 		{
 			Interface::Print("%s upload successful\n\n", partitionFlashInfo.pitEntry->GetPartitionName());
 			return (true);
@@ -317,9 +318,9 @@ static PitData *getPitData(BridgeManager *bridgeManager, FILE *pitFile, bool rep
 	{
 		// Load the local pit file into memory.
 
-		fseek(pitFile, 0, SEEK_END);
-		long localPitFileSize = ftell(pitFile);
-		rewind(pitFile);
+		FileSeek(pitFile, 0, SEEK_END);
+		unsigned int localPitFileSize = (unsigned int)FileTell(pitFile);
+		FileRewind(pitFile);
 
 		unsigned char *pitFileBuffer = new unsigned char[localPitFileSize];
 		memset(pitFileBuffer, 0, localPitFileSize);
@@ -328,7 +329,7 @@ static PitData *getPitData(BridgeManager *bridgeManager, FILE *pitFile, bool rep
 
 		if (dataRead > 0)
 		{
-			rewind(pitFile);
+			FileRewind(pitFile);
 
 			localPitData = new PitData();
 			localPitData->Unpack(pitFileBuffer);
@@ -391,7 +392,6 @@ int FlashAction::Execute(int argc, char **argv)
 
 	argumentTypes["no-reboot"] = kArgumentTypeFlag;
 	argumentTypes["resume"] = kArgumentTypeFlag;
-	argumentTypes["delay"] = kArgumentTypeUnsignedInteger;
 	argumentTypes["verbose"] = kArgumentTypeFlag;
 	argumentTypes["stdout-errors"] = kArgumentTypeFlag;
 	argumentTypes["usb-log-level"] = kArgumentTypeString;
@@ -421,7 +421,6 @@ int FlashAction::Execute(int argc, char **argv)
 		return (0);
 	}
 
-	const UnsignedIntegerArgument *communicationDelayArgument = static_cast<const UnsignedIntegerArgument *>(arguments.GetArgument("delay"));
 	const UnsignedIntegerArgument *usbBusArgument = static_cast<const UnsignedIntegerArgument *>(arguments.GetArgument("usb-bus"));
 	const UnsignedIntegerArgument *usbPortArgument = static_cast<const UnsignedIntegerArgument *>(arguments.GetArgument("usb-port"));
 
@@ -511,13 +510,7 @@ int FlashAction::Execute(int argc, char **argv)
 
 	// Perform flash
 
-	int communicationDelay = BridgeManager::kCommunicationDelayDefault;
-
-	if (communicationDelayArgument)
-		communicationDelay = communicationDelayArgument->GetValue();
-
-
-	BridgeManager *bridgeManager = new BridgeManager(verbose, communicationDelay);
+	BridgeManager *bridgeManager = new BridgeManager(verbose);
 	bridgeManager->SetUsbLogLevel(usbLogLevel);
 
 	if (usbBusArgument)

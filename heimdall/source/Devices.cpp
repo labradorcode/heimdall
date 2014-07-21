@@ -38,9 +38,7 @@ Description: Prints a list of bus:port pairs for devices that Heimdall recognize
 
 int Devices::Execute(int argc, char **argv)
 {
-        int communicationDelay = BridgeManager::kCommunicationDelayDefault;
-
-        BridgeManager *bridgeManager = new BridgeManager(0, communicationDelay);
+        BridgeManager *bridgeManager = new BridgeManager(0);
 
         bridgeManager->SetUsbLogLevel(BridgeManager::UsbLogLevel::None);
 
