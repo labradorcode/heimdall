@@ -4,6 +4,7 @@ AM_CPPFLAGS = $(DEPS_CFLAGS) -std=c++0x -I../libpit/Source
 STATIC_LIBS = ../libpit/libpit-1.4.a
 bin_PROGRAMS = heimdall
 heimdall_SOURCES = source/Arguments.cpp \
+	source/Devices.cpp \
 	source/BridgeManager.cpp \
 	source/ClosePcScreenAction.cpp \
 	source/DetectAction.cpp \
