@@ -57,6 +57,7 @@ am__installdirs = "$(DESTDIR)$(bindir)" "$(DESTDIR)$(udevrulesdir)"
 PROGRAMS = $(bin_PROGRAMS)
 am__dirstamp = $(am__leading_dot)dirstamp
 am_heimdall_OBJECTS = source/Arguments.$(OBJEXT) \
+	source/Devices.$(OBJEXT) \
 	source/BridgeManager.$(OBJEXT) \
 	source/ClosePcScreenAction.$(OBJEXT) \
 	source/DetectAction.$(OBJEXT) \
@@ -263,7 +264,7 @@ ACLOCAL_AMFLAGS = ${ACLOCAL_FLAGS}
 AM_CPPFLAGS = $(DEPS_CFLAGS) -std=c++0x -I../libpit/Source
 STATIC_LIBS = ../libpit/libpit-1.4.a
 heimdall_SOURCES = source/Arguments.cpp \
-	source/Devices.cpp \ 
+	source/Devices.cpp \
 	source/BridgeManager.cpp \
 	source/ClosePcScreenAction.cpp \
 	source/DetectAction.cpp \
@@ -388,6 +389,8 @@ source/Arguments.$(OBJEXT): source/$(am__dirstamp) \
 	source/$(DEPDIR)/$(am__dirstamp)
 source/BridgeManager.$(OBJEXT): source/$(am__dirstamp) \
 	source/$(DEPDIR)/$(am__dirstamp)
+source/Devices.$(OBJEXT): source/$(am__dirstamp) \
+	source/$(DEPDIR)/$(am__dirstamp)
 source/ClosePcScreenAction.$(OBJEXT): source/$(am__dirstamp) \
 	source/$(DEPDIR)/$(am__dirstamp)
 source/DetectAction.$(OBJEXT): source/$(am__dirstamp) \
@@ -418,6 +421,7 @@ mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
 	-rm -f source/Arguments.$(OBJEXT)
 	-rm -f source/BridgeManager.$(OBJEXT)
+	-rm -f source/Devices.$(OBJEXT)
 	-rm -f source/ClosePcScreenAction.$(OBJEXT)
 	-rm -f source/DetectAction.$(OBJEXT)
 	-rm -f source/DownloadPitAction.$(OBJEXT)
@@ -435,6 +439,7 @@ distclean-compile:
 
 @AMDEP_TRUE@@am__include@ @am__quote@source/$(DEPDIR)/Arguments.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@source/$(DEPDIR)/BridgeManager.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@source/$(DEPDIR)/Devices.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@source/$(DEPDIR)/ClosePcScreenAction.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@source/$(DEPDIR)/DetectAction.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@source/$(DEPDIR)/DownloadPitAction.Po@am__quote@
